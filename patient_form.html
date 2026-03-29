@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RouteCare — Patient Information</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <style>
+    .progress-bar-wrap {
+      background: var(--grey-200);
+      border-radius: 20px;
+      height: 6px;
+      margin: 16px 0 28px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 33%;
+      background: linear-gradient(90deg, var(--blue), #60A5FA);
+      border-radius: 20px;
+      transition: width .4s ease;
+    }
+    .step-indicator {
+      display: flex; gap: 8px; align-items: center;
+      margin-bottom: 6px;
+    }
+    .step { font-size: 0.75rem; color: var(--grey-400); font-weight: 500; }
+    .step.active { color: var(--blue); font-weight: 700; }
+    .form-card {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin: 24px 0 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--grey-200);
+    }
+    .section-header .icon {
+      width: 32px; height: 32px;
+      background: var(--blue-light);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .section-header h3 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--blue-dark);
+    }
+    .form-actions {
+      display: flex; gap: 12px; margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--grey-200);
+    }
+  </style>
+</head>
+<body class="form-page">
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="brand-icon">🚑</div>
+    Route<span class="accent">Care</span>
+  </div>
+  <div class="nav-links">
+    <span class="nav-badge">🟢 Ambulance Mode</span>
+    <div class="nav-user">
+      <div class="avatar">{{ session.user_id[0] }}</div>
+      <span>{{ session.user_id }}</span>
+    </div>
+    <a href="/logout" class="btn-logout">Logout</a>
+  </div>
+</nav>
+
+<div class="page-wrapper">
+  <div class="form-card">
+    <div class="page-header">
+      <div class="label">Step 1 of 3</div>
+      <h1>Patient Information</h1>
+      <p>Enter patient details before starting emergency monitoring</p>
+    </div>
+
+    <div class="step-indicator">
+      <span class="step active">① Patient Info</span>
+      <span style="color:var(--grey-200)">——</span>
+      <span class="step">② Emergency Monitor</span>
+      <span style="color:var(--grey-200)">——</span>
+      <span class="step">③ Hospital Route</span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill"></div>
+    </div>
+
+    <div class="card">
+      <form method="POST" action="/patient">
+
+        <!-- Personal Details -->
+        <div class="section-header">
+          <div class="icon">👤</div>
+          <h3>Personal Details</h3>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="name" class="form-control"
+                   placeholder="Patient full name" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Age</label>
+            <input type="number" name="age" class="form-control"
+                   placeholder="Age in years" min="0" max="120" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <select name="gender" class="form-control" required>
+              <option value="">Select gender</option>
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Group</label>
+            <select name="blood_group" class="form-control" required>
+              <option value="">Select blood group</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>O+</option><option>O-</option>
+              <option>AB+</option><option>AB-</option>
+              <option>Unknown</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contact Number</label>
+            <input type="tel" name="contact" class="form-control"
+                   placeholder="Emergency contact" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Emergency Type</label>
+            <select name="emergency" class="form-control" required>
+              <option value="">Select emergency type</option>
+              <option>Cardiac Arrest</option>
+              <option>Stroke</option>
+              <option>Road Accident / Trauma</option>
+              <option>Respiratory Distress</option>
+              <option>Severe Burns</option>
+              <option>Overdose / Poisoning</option>
+              <option>Seizure</option>
+              <option>General Emergency</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Medical Info -->
+        <div class="section-header">
+          <div class="icon">🩺</div>
+          <h3>Medical Information</h3>
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label">Current Symptoms</label>
+          <textarea name="symptoms" class="form-control"
+                    placeholder="Describe visible symptoms (e.g. chest pain, unconscious, difficulty breathing...)"
+                    rows="3"></textarea>
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label">Known Medical Conditions</label>
+          <textarea name="conditions" class="form-control"
+                    placeholder="Known conditions, allergies, medications (e.g. Diabetes, Hypertension, Aspirin allergy...)"
+                    rows="2"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <a href="/" class="btn btn-outline">← Back</a>
+          <button type="submit" class="btn btn-primary" style="flex:1;">
+            Save &amp; Start Monitoring →
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  RouteCare Emergency Response System — Hackathon Demo
+</footer>
+</body>
+</html>

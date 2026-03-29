@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>RouteCare — Hospital Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <style>
+    body{background:var(--grey-100)}
+    /* ─── TABS ─── */
+    .dash-tabs{display:flex;gap:4px;background:white;border-bottom:1px solid var(--grey-200);padding:0 24px}
+    .dtab{padding:14px 20px;border:none;background:transparent;font-size:.88rem;font-weight:600;color:var(--grey-400);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s}
+    .dtab.active{color:var(--blue);border-bottom-color:var(--blue)}
+    .dtab-pane{display:none;animation:fadein .25s}
+    .dtab-pane.active{display:block}
+    @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+    /* ─── EMERGENCY BANNER ─── */
+    .em-banner{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#7F1D1D,#B91C1C);border-radius:var(--radius-md);padding:16px 20px;margin-bottom:20px;cursor:pointer;transition:opacity .15s}
+    .em-banner:hover{opacity:.93}
+    .em-banner-icon{font-size:2rem;animation:shake .5s infinite alternate}
+    @keyframes shake{0%{transform:rotate(-4deg)}100%{transform:rotate(4deg)}}
+    .em-banner-text .title{font-family:var(--font-head);font-size:1rem;font-weight:700;color:white}
+    .em-banner-text .sub{font-size:.8rem;color:rgba(255,255,255,.65);margin-top:3px}
+    .em-banner .accept-btn{margin-left:auto;flex-shrink:0;background:var(--lime);color:var(--dark);border:none;border-radius:10px;padding:10px 18px;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s}
+    .em-banner .accept-btn:hover{background:var(--lime-dark)}
+
+    /* No emergency state */
+    .no-em{text-align:center;padding:48px 20px;color:var(--grey-400)}
+    .no-em .icon{font-size:3rem;margin-bottom:12px}
+    .no-em h3{font-size:1.1rem;color:var(--grey-600);margin-bottom:6px}
+
+    /* Patient vitals section (locked until accept) */
+    .vitals-locked{background:var(--grey-100);border:2px dashed var(--grey-200);border-radius:var(--radius-md);padding:32px;text-align:center;color:var(--grey-400)}
+    .vitals-grid-h{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+    @media(max-width:700px){.vitals-grid-h{grid-template-columns:repeat(2,1fr)}}
+    .mvc{background:var(--grey-50);border:1px solid var(--grey-200);border-radius:10px;padding:14px;text-align:center}
+    .mvc .mv{font-family:var(--font-head);font-size:1.5rem;font-weight:700;color:var(--dark)}
+    .mvc .ml{font-size:.7rem;color:var(--grey-400);text-transform:uppercase;letter-spacing:.6px}
+    .mvc .ms{font-size:.7rem;font-weight:700;margin-top:4px}
+    .ok-s{color:var(--stable)}.warn-s{color:var(--moderate)}.err-s{color:var(--critical)}
+
+    /* ─── EQUIPMENT & FACILITIES ─── */
+    .eq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+    .eq-card{background:white;border:1px solid var(--grey-200);border-radius:10px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+    .eq-val{font-family:var(--font-head);font-size:1.8rem;font-weight:700;color:var(--blue)}
+    .eq-lbl{font-size:.75rem;color:var(--grey-600);text-align:center}
+    .eq-edit-btn{position:absolute;top:8px;right:8px;background:var(--grey-100);border:none;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:.75rem;display:flex;align-items:center;justify-content:center}
+    .eq-edit-btn:hover{background:var(--blue-light);color:var(--blue)}
+    .fac-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:4px}
+    .fac-card{background:white;border:1px solid var(--grey-200);border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between}
+    .fac-name{font-size:.88rem;font-weight:600;color:var(--dark)}
+    .fac-toggle{background:none;border:none;cursor:pointer;font-size:1.5rem;padding:0;line-height:1;transition:transform .15s}
+    .fac-toggle:hover{transform:scale(1.15)}
+
+    /* ─── DOCTORS ─── */
+    .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+    .doc-card{background:white;border:1px solid var(--grey-200);border-radius:var(--radius-md);padding:16px;display:flex;align-items:center;gap:12px;position:relative}
+    .doc-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;flex-shrink:0}
+    .doc-avatar.on{background:var(--stable-bg);color:var(--stable)}
+    .doc-avatar.off{background:var(--grey-100);color:var(--grey-400)}
+    .doc-name{font-weight:700;font-size:.88rem;color:var(--dark)}
+    .doc-spec{font-size:.75rem;color:var(--grey-400);margin-top:2px}
+    .duty-tog{position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px;transition:all .2s}
+    .duty-tog.on{background:var(--stable-bg);color:var(--stable)}
+    .duty-tog.off{background:var(--grey-100);color:var(--grey-400)}
+    .duty-tog:hover{transform:scale(1.05)}
+
+    /* ─── ADD DOCTOR FORM ─── */
+    .add-doc-form{background:white;border:1.5px dashed var(--blue);border-radius:var(--radius-md);padding:16px;margin-top:16px}
+    .add-doc-form .form-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
+
+    /* ─── CHECKLIST ─── */
+    .chk-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--grey-100)}
+    .chk-item:last-child{border-bottom:none}
+    .chk-box{width:20px;height:20px;border-radius:5px;border:2px solid var(--grey-200);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.78rem;transition:all .2s}
+    .chk-box.done{background:var(--stable);border-color:var(--stable);color:white}
+
+    /* ─── BEDS ─── */
+    .beds-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+    .bed{height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:600}
+    .bed.occ{background:#FEE2E2;color:#B91C1C}
+    .bed.avail{background:#DCFCE7;color:#166534}
+    .bed.res{background:#FEF3C7;color:#92400E}
+
+    /* ─── LAYOUT ─── */
+    .em-main-grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
+    @media(max-width:900px){.em-main-grid{grid-template-columns:1fr}}
+    .section-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--grey-400);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+    .section-label::after{content:'';flex:1;height:1px;background:var(--grey-200)}
+    .cond-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:700;text-transform:uppercase}
+    .cond-stable{background:var(--stable-bg);color:var(--stable)}
+    .cond-moderate{background:var(--moderate-bg);color:var(--moderate)}
+    .cond-critical{background:var(--critical-bg);color:var(--critical)}
+    .cond-critical::before,.cond-moderate::before,.cond-stable::before{content:'●';margin-right:2px}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+    .cond-critical::before{animation:blink .7s infinite}
+    .ai-summary-box{background:linear-gradient(135deg,#1E3A5F,#1D4ED8);border-radius:var(--radius-md);padding:18px;margin-bottom:16px}
+    .eta-box{background:var(--dark);border-radius:var(--radius-md);padding:18px;text-align:center;color:white}
+    .eta-num{font-family:var(--font-head);font-size:3rem;font-weight:700;color:var(--lime);line-height:1}
+    .toast{position:fixed;bottom:24px;right:24px;background:var(--dark);color:white;border-radius:12px;padding:12px 18px;font-size:.85rem;font-weight:500;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-lg);transform:translateY(80px);opacity:0;transition:all .3s;z-index:500;border-left:4px solid var(--stable)}
+    .toast.show{transform:translateY(0);opacity:1}
+    .toast.info{border-left-color:var(--blue)}
+    .live-pill{display:inline-flex;align-items:center;gap:6px;background:#FEF2F2;border:1px solid #FECACA;border-radius:20px;padding:4px 12px;font-size:.72rem;font-weight:700;color:var(--critical);text-transform:uppercase;letter-spacing:1px}
+    .live-dot{width:7px;height:7px;border-radius:50%;background:var(--critical);animation:blink .7s infinite}
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">
+    <div class="brand-icon">🏥</div>
+    Route<span class="accent">Care</span>
+    <span style="font-size:.7rem;background:var(--blue-light);color:var(--blue);border-radius:4px;padding:2px 8px;font-weight:600">HOSPITAL</span>
+  </div>
+  <div class="nav-links">
+    <span id="alertPill" style="display:none" class="live-pill"><span class="live-dot"></span><span id="alertCount">1</span> Emergency</span>
+    <div class="nav-user">
+      <div class="avatar">{{ user_id[0] }}</div>
+      <span>{{ user_id }}</span>
+    </div>
+    <a href="/audit" target="_blank" style="background:var(--grey-100);border:1px solid var(--grey-200);border-radius:8px;padding:6px 13px;font-size:.78rem;color:var(--grey-600);text-decoration:none;font-weight:600">📋 Audit Log</a>
+    <a href="/logout" class="btn-logout">Logout</a>
+  </div>
+</nav>
+
+<!-- Dashboard tabs -->
+<div class="dash-tabs">
+  <button class="dtab active" onclick="switchTab('incoming',this)">🚨 Incoming Emergency</button>
+  <button class="dtab" onclick="switchTab('equipment',this)">🏥 Equipment &amp; Facilities</button>
+  <button class="dtab" onclick="switchTab('doctors',this)">👨‍⚕️ Doctors</button>
+</div>
+
+<div class="page-wrapper" style="max-width:1200px">
+
+<!-- ════ TAB 1: INCOMING EMERGENCY ════ -->
+<div id="tab-incoming" class="dtab-pane active">
+
+  <!-- ALERT BANNER (always shown, click to accept) -->
+  <div id="emBannerWrap">
+    <div class="no-em" id="noEmState" {% if emergency_active %}style="display:none"{% endif %}>
+      <div class="icon">📡</div>
+      <h3>No Active Emergency</h3>
+      <p>The dashboard will update automatically when an ambulance dispatches a patient.</p>
+    </div>
+
+    <!-- Active banner -->
+    <div id="emBanner" class="em-banner" {% if not emergency_active %}style="display:none"{% endif %} onclick="acceptEmergency()">
+      <div class="em-banner-icon">🚨</div>
+      <div class="em-banner-text">
+        <div class="title" id="bnrTitle">Incoming Emergency Alert</div>
+        <div class="sub" id="bnrSub">Click to accept and view patient vitals</div>
+      </div>
+      <span class="cond-badge" id="bnrCond" style="flex-shrink:0"></span>
+      <button class="accept-btn" onclick="event.stopPropagation();acceptEmergency()">⚡ Accept &amp; View Vitals</button>
+    </div>
+  </div>
+
+  <!-- AI SUMMARY (visible after banner is shown) -->
+  <div id="aiSummarySection" style="display:none">
+    <div class="ai-summary-box">
+      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#93C5FD;margin-bottom:8px">🤖 AI Medical Summary</div>
+      <div style="font-size:.9rem;color:white;line-height:1.6;font-weight:500" id="aiSummaryText">—</div>
+    </div>
+  </div>
+
+  <div class="em-main-grid" id="emMainGrid" style="display:none">
+    <!-- LEFT -->
+    <div>
+      <!-- VITALS — locked until accept -->
+      <div class="section-label">Patient Vitals</div>
+      <div id="vitalsLocked" class="vitals-locked">
+        <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+        <div style="font-weight:600;color:var(--grey-600);margin-bottom:4px">Vitals Locked</div>
+        <div style="font-size:.85rem">Accept the incoming emergency to unlock live patient vitals</div>
+      </div>
+      <div id="vitalsUnlocked" style="display:none">
+        <div class="vitals-grid-h" id="hVitalsGrid">
+          <div class="mvc"><div class="mv" id="hHR">—</div><div class="ml">Heart Rate (bpm)</div><div class="ms" id="hHRS">—</div></div>
+          <div class="mvc"><div class="mv" id="hBP">—</div><div class="ml">Blood Pressure</div><div class="ms" id="hBPS">—</div></div>
+          <div class="mvc"><div class="mv" id="hSPO2">—</div><div class="ml">SpO2 (%)</div><div class="ms" id="hSPO2S">—</div></div>
+          <div class="mvc"><div class="mv" id="hTEMP">—</div><div class="ml">Temperature (°C)</div><div class="ms" id="hTEMPS">—</div></div>
+        </div>
+
+        <!-- AI Explanation -->
+        <div class="card" style="margin-bottom:16px">
+          <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--blue);margin-bottom:8px">📋 Clinical Reasoning</div>
+          <div style="font-size:.85rem;line-height:1.65;color:var(--grey-800)" id="hAiExp">—</div>
+          <!-- Guardrails summary (injected by JS after accept) -->
+          <div id="hGuardrails" style="margin-top:10px"></div>
+        </div>
+
+        <!-- Checklist -->
+        <div class="card">
+          <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--grey-400);margin-bottom:10px">Preparation Checklist</div>
+          <div id="prepChecklist">
+            {% for item in ['ICU Bed Cleared','Ventilator Ready','Resuscitation Team','Blood Bank Contacted','Emergency Bay Open','Physician Notified'] %}
+            <div class="chk-item">
+              <div class="chk-box" onclick="this.classList.toggle('done');this.textContent=this.classList.contains('done')?'✓':''"></div>
+              <span style="font-size:.87rem">{{ item }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Patient details (unlocked after accept) -->
+      <div id="patientDetails" style="display:none;margin-top:16px">
+        <div class="section-label">Patient Details</div>
+        <div class="card">
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:.85rem">
+            <div><span style="color:var(--grey-400)">Name: </span><strong id="pName">—</strong></div>
+            <div><span style="color:var(--grey-400)">Age/Gender: </span><strong id="pAge">—</strong></div>
+            <div><span style="color:var(--grey-400)">Blood Group: </span><strong id="pBlood" style="color:var(--critical)">—</strong></div>
+            <div><span style="color:var(--grey-400)">Emergency: </span><strong id="pEmergency" style="color:var(--blue)">—</strong></div>
+            <div style="grid-column:1/-1"><span style="color:var(--grey-400)">Symptoms: </span><strong id="pSymptoms">—</strong></div>
+            <div style="grid-column:1/-1"><span style="color:var(--grey-400)">Conditions: </span><strong id="pConditions">—</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- ETA Countdown -->
+      <div class="eta-box">
+        <div style="font-size:.7rem;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Ambulance ETA</div>
+        <div class="eta-num" id="etaCnt">—:——</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:4px">min : sec</div>
+      </div>
+
+      <!-- ICU Beds -->
+      <div class="card">
+        <div class="section-label">ICU Bed Map</div>
+        <div class="beds-grid">
+          {% set eq = hdata.equipment if (hdata and hdata.equipment) else {} %}
+          {% set total = eq.get('ICU Beds', 8) %}
+          {% set occupied = (total * 0.45)|int %}
+          {% for i in range(total) %}
+            {% if i < occupied %}<div class="bed occ">B{{ i+1 }} ✗</div>
+            {% elif i == occupied %}<div class="bed res">B{{ i+1 }} ⏳</div>
+            {% else %}<div class="bed avail">B{{ i+1 }} ✓</div>{% endif %}
+          {% endfor %}
+        </div>
+        <div style="margin-top:8px;display:flex;gap:10px;font-size:.7rem;font-weight:600">
+          <span style="color:#B91C1C">■ Occupied</span>
+          <span style="color:#92400E">■ Reserved</span>
+          <span style="color:#166534">■ Available</span>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <button class="btn btn-primary btn-full" onclick="confirmBed()">✅ Confirm Bed &amp; Accept</button>
+      <button class="btn btn-outline btn-full" onclick="requestRedirect()">🔄 Request Redirect</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ TAB 2: EQUIPMENT & FACILITIES ════ -->
+<div id="tab-equipment" class="dtab-pane">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <h2 style="font-size:1.2rem">Equipment &amp; Facilities</h2>
+      <p style="font-size:.83rem;color:var(--grey-400);margin-top:4px">Update quantities and facility availability in real-time</p>
+    </div>
+    <button class="btn btn-primary" onclick="saveEquipment()">💾 Save Changes</button>
+  </div>
+
+  <div class="section-label">Medical Equipment</div>
+  <div class="eq-grid" id="eqGrid">
+    {% set eq_items = hdata.equipment.items() if hdata and hdata.equipment else [] %}
+    {% for item, val in eq_items %}
+    <div class="eq-card">
+      <div class="eq-val" id="eq-val-{{ loop.index }}">{{ val }}</div>
+      <div class="eq-lbl">{{ item }}</div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button onclick="changeEq('{{ item }}',{{ loop.index }},-1)" style="width:28px;height:28px;border-radius:7px;border:1px solid var(--grey-200);background:var(--grey-50);cursor:pointer;font-size:1rem">−</button>
+        <button onclick="changeEq('{{ item }}',{{ loop.index }},1)" style="width:28px;height:28px;border-radius:7px;border:1px solid var(--grey-200);background:var(--grey-50);cursor:pointer;font-size:1rem">+</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="section-label" style="margin-top:28px">Facilities Available</div>
+  <div class="fac-grid" id="facGrid">
+    {% set fac_items = hdata.facilities.items() if hdata and hdata.facilities else [] %}
+    {% for fac, avail in fac_items %}
+    <div class="fac-card" id="fac-{{ loop.index }}">
+      <div class="fac-name">{{ fac }}</div>
+      <button class="fac-toggle" onclick="toggleFac('{{ fac }}','{{ loop.index }}')" id="facBtn-{{ loop.index }}" title="Toggle">{{ '✅' if avail else '❌' }}</button>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ════ TAB 3: DOCTORS ════ -->
+<div id="tab-doctors" class="dtab-pane">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <h2 style="font-size:1.2rem">Doctor Roster</h2>
+      <p style="font-size:.83rem;color:var(--grey-400);margin-top:4px">Toggle duty status and manage your medical team</p>
+    </div>
+    <button class="btn btn-primary" onclick="toggleAddForm()">+ Add Doctor</button>
+  </div>
+
+  <!-- Summary pills -->
+  <div style="display:flex;gap:12px;margin-bottom:20px" id="dutyStats">
+    <div style="background:var(--stable-bg);border-radius:10px;padding:10px 18px;text-align:center">
+      <div style="font-family:var(--font-head);font-size:1.4rem;font-weight:700;color:var(--stable)" id="onDutyCount">—</div>
+      <div style="font-size:.72rem;color:var(--grey-400);text-transform:uppercase;letter-spacing:.5px">On Duty</div>
+    </div>
+    <div style="background:var(--grey-100);border-radius:10px;padding:10px 18px;text-align:center">
+      <div style="font-family:var(--font-head);font-size:1.4rem;font-weight:700;color:var(--grey-400)" id="offDutyCount">—</div>
+      <div style="font-size:.72rem;color:var(--grey-400);text-transform:uppercase;letter-spacing:.5px">Off Duty</div>
+    </div>
+  </div>
+
+  <div class="doc-grid" id="docGrid">
+    {% for d in doctors %}
+    <div class="doc-card" id="doc-{{ d.id }}">
+      <div class="doc-avatar {{ 'on' if d.on_duty else 'off' }}">{{ d.name.split()[-1][0] }}</div>
+      <div>
+        <div class="doc-name">{{ d.name }}</div>
+        <div class="doc-spec">{{ d.specialty }}</div>
+      </div>
+      <button class="duty-tog {{ 'on' if d.on_duty else 'off' }}" onclick="toggleDoctor({{ d.id }},this)">
+        {{ 'On Duty' if d.on_duty else 'Off Duty' }}
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Add doctor form -->
+  <div class="add-doc-form" id="addDocForm" style="display:none">
+    <div style="font-weight:700;margin-bottom:12px;color:var(--blue)">➕ Add New Doctor</div>
+    <div class="add-doc-form form-grid">
+      <div>
+        <label class="form-label">Full Name</label>
+        <input type="text" id="newDocName" class="form-control" placeholder="Dr. Full Name"/>
+      </div>
+      <div>
+        <label class="form-label">Specialty</label>
+        <input type="text" id="newDocSpec" class="form-control" placeholder="e.g. Cardiologist"/>
+      </div>
+      <div style="align-self:flex-end">
+        <button class="btn btn-primary" onclick="addDoctor()" style="width:100%">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page-wrapper -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── TABS ───────────────────────────────────────────────
+function switchTab(name, btn){
+  document.querySelectorAll('.dtab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.dtab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+// ─── TOAST ──────────────────────────────────────────────
+function showToast(msg,type='info'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ─── EMERGENCY POLLING ───────────────────────────────────
+let etaSec=0, etaInterval=null, accepted=false;
+
+function startEtaCountdown(mins){
+  if(etaInterval) clearInterval(etaInterval);
+  etaSec = mins*60;
+  function tick(){
+    if(etaSec<=0){document.getElementById('etaCnt').textContent='ARRIVING';clearInterval(etaInterval);return}
+    const m=Math.floor(etaSec/60), s=etaSec%60;
+    document.getElementById('etaCnt').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    etaSec--;
+  }
+  tick(); etaInterval=setInterval(tick,1000);
+}
+
+function updateUI(data){
+  // Show banner
+  if(data.active){
+    document.getElementById('noEmState').style.display='none';
+    document.getElementById('emBanner').style.display='flex';
+    document.getElementById('alertPill').style.display='flex';
+    const p=data.patient||{};
+    document.getElementById('bnrTitle').textContent=`Incoming ${data.condition||''} — ${p.emergency||'Emergency'} | ${p.name||'Unknown'}, ${p.age||'?'}y`;
+    document.getElementById('bnrSub').textContent=`AI Stability: ${data.stability}/100 · ETA: ${data.eta} min · Click to accept & unlock vitals`;
+    const cb=document.getElementById('bnrCond');
+    cb.className=`cond-badge cond-${data.condition_color||'moderate'}`;
+    cb.textContent=data.condition||'';
+
+    // AI summary
+    document.getElementById('aiSummarySection').style.display='block';
+    document.getElementById('aiSummaryText').textContent=data.ai_summary||'Loading AI summary…';
+
+    document.getElementById('emMainGrid').style.display='grid';
+    startEtaCountdown(data.eta||6);
+
+    // Patient details
+    if(p.name) fillPatient(p);
+
+    // Vitals (only if accepted)
+    if(data.vitals && data.accepted_by){
+      accepted=true;
+      unlockVitals(data.vitals, data.ai_full||{});
+    }
+  }
+}
+
+function fillPatient(p){
+  document.getElementById('patientDetails').style.display='block';
+  document.getElementById('pName').textContent=p.name||'—';
+  document.getElementById('pAge').textContent=`${p.age||'?'}y / ${p.gender||'?'}`;
+  document.getElementById('pBlood').textContent=p.blood_group||'?';
+  document.getElementById('pEmergency').textContent=p.emergency||'?';
+  document.getElementById('pSymptoms').textContent=p.symptoms||'—';
+  document.getElementById('pConditions').textContent=p.conditions||'—';
+}
+
+function unlockVitals(v, ai){
+  document.getElementById('vitalsLocked').style.display='none';
+  document.getElementById('vitalsUnlocked').style.display='block';
+  if(!v) return;
+  const hr=v.hr||'—', bps=v.bp_sys||'—', bpd=v.bp_dia||'—', spo2=v.spo2||'—', temp=v.temp||'—';
+  document.getElementById('hHR').textContent=hr;
+  document.getElementById('hBP').textContent=bps+'/'+bpd;
+  document.getElementById('hSPO2').textContent=spo2;
+  document.getElementById('hTEMP').textContent=temp;
+  const hrS=hr<60||hr>110?'err-s':hr>90?'warn-s':'ok-s';
+  document.getElementById('hHRS').className='ms '+(hr<60||hr>110?'err-s':hr>90?'warn-s':'ok-s');
+  document.getElementById('hHRS').textContent=hr<60?'LOW':hr>110?'HIGH':'NORMAL';
+  document.getElementById('hBPS').className='ms '+(bps<90||bps>160?'err-s':bps<100||bps>140?'warn-s':'ok-s');
+  document.getElementById('hBPS').textContent=bps<90?'LOW':bps>160?'HIGH':'NORMAL';
+  document.getElementById('hSPO2S').className='ms '+(spo2<90?'err-s':spo2<95?'warn-s':'ok-s');
+  document.getElementById('hSPO2S').textContent=spo2<90?'CRITICAL':spo2<95?'LOW':'NORMAL';
+  document.getElementById('hTEMPS').className='ms '+(temp<35||temp>40?'err-s':temp>38.5?'warn-s':'ok-s');
+  document.getElementById('hTEMPS').textContent=temp<36?'LOW':temp>38.5?'FEVER':'NORMAL';
+  if(ai.explanation) document.getElementById('hAiExp').textContent=ai.explanation;
+
+  // Render active guardrails
+  const gBox = document.getElementById('hGuardrails');
+  if(gBox && ai.guardrails && ai.guardrails.length){
+    gBox.innerHTML = ai.guardrails.map(g=>`
+      <div style="border-radius:7px;padding:8px 12px;margin-top:6px;font-size:.78rem;
+        background:${g.severity==='CRITICAL'?'#FEF2F2':'#FFFBEB'};
+        border:1px solid ${g.severity==='CRITICAL'?'#FECACA':'#FDE68A'}">
+        <span style="font-weight:700;color:${g.severity==='CRITICAL'?'#991B1B':'#92400E'}">
+          ${g.severity==='CRITICAL'?'🚨':'⚠️'} ${g.name} [ICD-10: ${g.icd10}]
+        </span><br>
+        <span style="color:#374151">${g.message}</span>
+      </div>`).join('');
+  }
+}
+
+function acceptEmergency(){
+  if(accepted) return;
+  fetch('/api/accept_emergency',{method:'POST',headers:{'Content-Type':'application/json'}})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.ok){
+        accepted=true;
+        unlockVitals(d.vitals, d.ai||{});
+        showToast('✅ Emergency accepted — vitals unlocked','success');
+        document.getElementById('emBanner').style.pointerEvents='none';
+        document.getElementById('emBanner').style.opacity='.7';
+      }
+    });
+}
+
+// Poll every 4s for live updates
+setInterval(()=>{
+  fetch('/api/emergency_status').then(r=>r.json()).then(updateUI).catch(()=>{});
+},4000);
+
+// Initial load
+fetch('/api/emergency_status').then(r=>r.json()).then(updateUI).catch(()=>{});
+
+// ─── EQUIPMENT ──────────────────────────────────────────
+const eqData = {{ (hdata.equipment if (hdata and hdata.equipment) else {})|tojson }};
+const facData = {{ (hdata.facilities if (hdata and hdata.facilities) else {})|tojson }};
+
+function changeEq(name, idx, delta){
+  eqData[name]=(eqData[name]||0)+delta;
+  if(eqData[name]<0) eqData[name]=0;
+  document.getElementById('eq-val-'+idx).textContent=eqData[name];
+}
+
+function toggleFac(name, idx){
+  facData[name]=!facData[name];
+  document.getElementById('facBtn-'+idx).textContent=facData[name]?'✅':'❌';
+}
+
+function saveEquipment(){
+  fetch('/api/update_equipment',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({equipment:eqData, facilities:facData})
+  }).then(r=>r.json()).then(d=>{
+    if(d.ok) showToast('✅ Equipment & facilities saved','success');
+  });
+}
+
+// ─── DOCTORS ─────────────────────────────────────────────
+let doctors = {{ doctors|tojson }};
+
+function updateDutyStats(){
+  const on=doctors.filter(d=>d.on_duty).length;
+  document.getElementById('onDutyCount').textContent=on;
+  document.getElementById('offDutyCount').textContent=doctors.length-on;
+}
+updateDutyStats();
+
+function toggleDoctor(doctorId, btn){
+  fetch('/api/toggle_doctor',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({doctor_id:doctorId})
+  }).then(r=>r.json()).then(d=>{
+    if(d.ok){
+      doctors=d.doctors;
+      const doc=doctors.find(x=>x.id===doctorId)||{};
+      const card=document.getElementById('doc-'+doctorId);
+      if(card){
+        const av=card.querySelector('.doc-avatar');
+        btn.className='duty-tog '+(doc.on_duty?'on':'off');
+        btn.textContent=doc.on_duty?'On Duty':'Off Duty';
+        if(av) av.className='doc-avatar '+(doc.on_duty?'on':'off');
+      }
+      updateDutyStats();
+      showToast((doc.on_duty?'🟢':'⚫')+' '+(doc.name||'Doctor')+' marked '+(doc.on_duty?'on duty':'off duty'));
+    }
+  });
+}
+
+function toggleAddForm(){
+  const f=document.getElementById('addDocForm');
+  f.style.display=f.style.display==='none'?'block':'none';
+}
+
+function addDoctor(){
+  const name=document.getElementById('newDocName').value.trim();
+  const spec=document.getElementById('newDocSpec').value.trim();
+  if(!name||!spec){showToast('⚠ Fill all fields','info');return}
+  fetch('/api/add_doctor',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name,specialty:spec,on_duty:true})
+  }).then(r=>r.json()).then(d=>{
+    if(d.ok){
+      doctors=d.doctors;
+      const doc=doctors[doctors.length-1];
+      const grid=document.getElementById('docGrid');
+      const card=document.createElement('div');
+      card.className='doc-card'; card.id='doc-'+doc.id;
+      card.innerHTML=`<div class="doc-avatar on">${doc.name.split(' ').slice(-1)[0][0]}</div><div><div class="doc-name">${doc.name}</div><div class="doc-spec">${doc.specialty}</div></div><button class="duty-tog on" onclick="toggleDoctor(${doc.id},this)">On Duty</button>`;
+      grid.appendChild(card);
+      document.getElementById('newDocName').value='';
+      document.getElementById('newDocSpec').value='';
+      updateDutyStats();
+      showToast('✅ '+doc.name+' added','success');
+    }
+  });
+}
+
+function confirmBed(){showToast('✅ Bed confirmed and reserved','success')}
+function requestRedirect(){showToast('📡 Redirect request sent to dispatch','info')}
+</script>
+</body>
+</html>
