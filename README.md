@@ -50,22 +50,30 @@ Open: http://localhost:5000
 
 ```
 routecare/
-├── app.py                  # Flask backend + routes
-├── requirements.txt
-├── ai/
-│   └── ai_logic.py         # AI decision engine
-├── data/
-│   └── hospitals.json      # Hospital database
-├── static/
-│   └── css/style.css       # Full stylesheet
-└── templates/
-    ├── index.html           # Landing page
-    ├── login.html           # Login (ambulance + hospital toggle)
-    ├── patient_form.html    # Patient intake form
-    ├── emergency.html       # Live monitoring + AI + hospital recommendation
-    └── hospital_dashboard.html  # Hospital incoming alert view
-```
+├── app.py # Flask backend + main routes
+├── db.py # Database connection & setup
+├── requirements.txt # Project dependencies
+├── README.md # Project documentation
 
+├── ai/
+│ └── ai_logic.py # Core AI decision engine
+
+├── data/
+│ ├── hospitals.json # Hospital dataset
+│ └── routecare.db # SQLite database
+
+├── static/
+│ └── css/
+│ └── style.css # Application styling
+
+├── templates/
+│ ├── index.html # Landing page
+│ ├── login.html # Login page
+│ ├── signup.html # Signup page
+│ ├── patient_form.html # Patient intake form
+│ ├── emergency.html # Live monitoring + AI decision view
+│ ├── hospital_dashboard.html # Hospital-side dashboard
+│ └── audit_log.html # Audit logs viewer
 ---
 
 ##  AI Logic (`ai/ai_logic.py`)
@@ -167,9 +175,9 @@ RouteCare follows a multi-agent system design:
 
 ##  Authors
 
-- **Pratiksha Chakraborty** — Frontend & Integration  
-- **Suryansh Dev** — Backend & API Development  
-- **Mohammad Shahwaz Alam** — AI Logic & Architecture  
+- **Pratiksha Chakraborty**  
+- **Suryansh Dev** 
+- **Mohammad Shahwaz Alam** 
 
 ---
 
