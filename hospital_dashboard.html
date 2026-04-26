@@ -161,6 +161,49 @@
       <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#93C5FD;margin-bottom:8px">🤖 AI Medical Summary</div>
       <div style="font-size:.9rem;color:white;line-height:1.6;font-weight:500" id="aiSummaryText">—</div>
     </div>
+
+    <!-- Gemini SBAR panel — injected by JS after accept -->
+    <div id="geminiSbarPanel" style="display:none;margin-top:12px">
+      <div style="background:linear-gradient(135deg,#F0FDF4,#EFF6FF);border:1.5px solid #BBF7D0;border-radius:10px;padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1rem">✨</span>
+            <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#166534">Gemini SBAR Triage Handoff</span>
+          </div>
+          <span id="sbarSourceBadge" style="font-size:.65rem;padding:2px 8px;border-radius:8px;font-weight:600;background:#DCFCE7;color:#15803D">Gemini Live</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="sbarGrid">
+          <div style="background:white;border-radius:8px;padding:10px">
+            <div style="font-size:.68rem;font-weight:700;color:#166534;text-transform:uppercase;margin-bottom:4px">S — Situation</div>
+            <div style="font-size:.8rem;color:#374151;line-height:1.5" id="sbarS">—</div>
+          </div>
+          <div style="background:white;border-radius:8px;padding:10px">
+            <div style="font-size:.68rem;font-weight:700;color:#1E40AF;text-transform:uppercase;margin-bottom:4px">B — Background</div>
+            <div style="font-size:.8rem;color:#374151;line-height:1.5" id="sbarB">—</div>
+          </div>
+          <div style="background:white;border-radius:8px;padding:10px">
+            <div style="font-size:.68rem;font-weight:700;color:#92400E;text-transform:uppercase;margin-bottom:4px">A — Assessment</div>
+            <div style="font-size:.8rem;color:#374151;line-height:1.5" id="sbarA">—</div>
+          </div>
+          <div style="background:white;border-radius:8px;padding:10px">
+            <div style="font-size:.68rem;font-weight:700;color:#7C3AED;text-transform:uppercase;margin-bottom:4px">R — Recommendation</div>
+            <div style="font-size:.8rem;color:#374151;line-height:1.5" id="sbarR">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gemini family explanation panel -->
+    <div id="geminiFamilyPanel" style="display:none;margin-top:10px">
+      <details>
+        <summary style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.5);cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:8px 12px">
+          <span>👨‍👩‍👧</span> Patient / Family Explanation (Gemini)
+        </summary>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-top:none;border-radius:0 0 8px 8px;padding:12px;font-size:.85rem;color:rgba(255,255,255,.8);line-height:1.6" id="familyExplText">
+          —
+        </div>
+      </details>
+    </div>
   </div>
 
   <div class="em-main-grid" id="emMainGrid" style="display:none">
@@ -455,6 +498,28 @@ function unlockVitals(v, ai){
         </span><br>
         <span style="color:#374151">${g.message}</span>
       </div>`).join('');
+  }
+
+  // ── Render Gemini SBAR + Family note ─────────────────────
+  if(ai.gemini){
+    const sbar = ai.gemini.sbar;
+    if(sbar){
+      document.getElementById('geminiSbarPanel').style.display='block';
+      document.getElementById('sbarS').textContent = sbar.situation    || '—';
+      document.getElementById('sbarB').textContent = sbar.background   || '—';
+      document.getElementById('sbarA').textContent = sbar.assessment   || '—';
+      document.getElementById('sbarR').textContent = sbar.recommendation|| '—';
+      const badge = document.getElementById('sbarSourceBadge');
+      if(sbar.source !== 'gemini'){
+        badge.textContent='Rule-Based Fallback';
+        badge.style.background='#FEF9C3'; badge.style.color='#854D0E';
+      }
+    }
+    const fam = ai.gemini.family_explanation;
+    if(fam){
+      document.getElementById('geminiFamilyPanel').style.display='block';
+      document.getElementById('familyExplText').textContent = fam;
+    }
   }
 }
 

@@ -1,6 +1,7 @@
-#  RouteCare — AI Emergency Response System
+# RouteCare — AI Emergency Response System
+### Powered by Google Gemini · Flask · Google Cloud Run
 
-An AI-powered emergency response system that monitors patient vitals in real-time and intelligently routes ambulances to the most suitable hospital based on medical urgency, resource availability, and distance.
+RouteCare continuously monitors patient vitals during ambulance transit, detects clinical deterioration using WHO/AHA guardrails, dynamically ranks hospitals by GPS and ICU capacity, and uses **Google Gemini AI** for real-time paramedic action plans, SBAR triage handoffs, and patient family explanations.
 
 ---
 
@@ -27,87 +28,144 @@ The goal is simple:
 
 ---
 
-## Quick Start
+## Quick Start (Local)
 
 ```bash
-pip install flask
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Get a free Gemini API key at: https://aistudio.google.com/app/apikey
+cp .env.example .env
+# Edit .env → set GEMINI_API_KEY=your-key-here
+
+# 3. Run
 python app.py
+# Open: http://localhost:5000
 ```
-Open: http://localhost:5000
 
 ---
 
-##  Demo Login Credentials
+## Deploy to Google Cloud Run
 
-| Role       | User ID | Password  |
-|------------|---------|-----------|
-| Ambulance  | AMB006  | 1234      |
-| Hospital   | HSP006  | 1234      |
+```bash
+# 1. Install Google Cloud SDK and authenticate
+gcloud auth login
+
+# 2. Set your project ID and Gemini key in deploy.sh
+nano deploy.sh   # Edit PROJECT_ID and GEMINI_API_KEY
+
+# 3. One-command deploy
+chmod +x deploy.sh && ./deploy.sh
+```
+
+The script: enables APIs → stores key in Secret Manager → builds via Cloud Build → deploys to Cloud Run → prints live URL.
 
 ---
 
-##  Project Structure
+## Demo Credentials
+
+| Role      | User ID | Password |
+|-----------|---------|----------|
+| Ambulance | AMB001  | pass123  |
+| Ambulance | AMB002  | pass456  |
+| Hospital  | HSP001  | hosp123  |
+| Hospital  | HSP002  | hosp456  |
+
+---
+
+## Google Gemini Features
+
+| Feature | Location | Description |
+|---------|----------|-------------|
+| Counterfactual Action Plan | Emergency page | Step-by-step "do this RIGHT NOW" paramedic guide |
+| SBAR Triage Handoff | Emergency + Hospital dashboard | Structured clinical handoff (Situation·Background·Assessment·Recommendation) |
+| Family Explanation | Both dashboards | Jargon-free update for the patient's family |
+| Gemini Status Badge | Emergency page header | Live indicator: "Gemini Live" vs "Rule-Based Fallback" |
+| /api/gemini_status | API endpoint | Health check — returns available:true/false |
+| /api/gemini_counterfactual | API endpoint | On-demand refresh via "Refresh Gemini" button |
+
+All Gemini features **degrade gracefully** — if the API key is missing or unavailable, rule-based fallbacks activate automatically. The core clinical workflow is never blocked.
+
+---
+
+## Project Structure
 
 ```
 routecare/
-├── app.py # Flask backend + main routes
-├── db.py # Database connection & setup
-├── requirements.txt # Project dependencies
-├── README.md # Project documentation
-
+├── app.py                      # Flask backend — all routes
+├── gemini_service.py           # Google Gemini AI integration (3 functions + health check)
+├── db.py                       # SQLite database layer
+├── requirements.txt            # All Python dependencies
+├── Dockerfile                  # Cloud Run container (Gunicorn)
+├── deploy.sh                   # One-command GCP deployment script
+├── .env.example                # Environment variable template
+├── .gitignore
 ├── ai/
-│ └── ai_logic.py # Core AI decision engine
-
+│   └── ai_logic.py             # Rule-based engine + Gemini calls (Step 7)
 ├── data/
-│ ├── hospitals.json # Hospital dataset
-│ └── routecare.db # SQLite database
-
-├── static/
-│ └── css/
-│ └── style.css # Application styling
-
-├── templates/
-│ ├── index.html # Landing page
-│ ├── login.html # Login page
-│ ├── signup.html # Signup page
-│ ├── patient_form.html # Patient intake form
-│ ├── emergency.html # Live monitoring + AI decision view
-│ ├── hospital_dashboard.html # Hospital-side dashboard
-│ └── audit_log.html # Audit logs viewer
----
-
-##  AI Logic (`ai/ai_logic.py`)
-
-**Function:** `get_ai_decision(vitals)`
-
-**Input:**
-- `hr` — Heart Rate (bpm)
-- `bp_sys`, `bp_dia` — Blood Pressure (mmHg)
-- `spo2` — Oxygen Saturation (%)
-- `temp` — Temperature (°C)
-- `emergency_type` — Type of emergency
-
-**Output:**
-- `stability_score` — 0–100
-- `condition` — Stable / Moderate / Critical
-- `explanation` — AI-generated clinical reasoning
-- `hospitals_ranked` — Sorted list of hospitals by match score
-- `hospital_alert` — Pre-generated alert for receiving hospital
-- `prep_items` — Items hospital should prepare
-
-##  Decision Logic
-
-The system evaluates patient vitals and deducts points for abnormal values across:
-- Heart Rate  
-- Blood Pressure  
-- Oxygen Saturation  
-- Temperature  
-
-Hospital ranking is computed using:
-ICU beds × weight + ventilators × weight − distance penalty + specialty match bonus
-This ensures a balance between **urgency, capability, and travel time**.
+│   ├── hospitals.json
+│   └── routecare.db            # SQLite DB (auto-created on first run)
+├── static/css/style.css
+└── templates/
+    ├── index.html              # Landing page — Google tech badges added
+    ├── emergency.html          # Paramedic dashboard — Gemini panel added
+    ├── hospital_dashboard.html # Hospital view — SBAR + family note added
+    ├── audit_log.html          # Audit trail — Gemini source column added
+    ├── login.html
+    ├── patient_form.html
+    └── signup.html
+```
 
 ---
+## AI Architecture
+
+```
+Patient Vitals (every 3 seconds)
+          │
+          ▼
+┌─────────────────────────────┐
+│  Rule-Based Engine          │  ← Always runs, always reliable
+│  ai_logic.py — Steps 1–6   │
+│  • 9 WHO/AHA Guardrails     │
+│  • Stability Score 0–100    │
+│  • Hospital Ranking         │
+│  • Edge Case Detection      │
+└──────────────┬──────────────┘
+               │ Step 7
+               ▼
+┌─────────────────────────────┐
+│  Google Gemini 1.5 Flash    │  ← Enhances with natural language
+│  gemini_service.py          │
+│  • Counterfactual Plan      │  "1. Give 15L O₂. 2. Start IV..."
+│  • SBAR Triage Note         │  Hospital handoff format
+│  • Family Explanation       │  "Your loved one is..."
+│                             │
+│  Graceful fallback if       │  Rule-based responses if Gemini
+│  API unavailable            │  is down — system never blocks
+└─────────────────────────────┘
+               │
+               ▼
+      emergency.html + hospital_dashboard.html
+```
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/vitals` | Live vitals + full AI + Gemini decision |
+| GET | `/api/gemini_status` | Gemini health check |
+| POST | `/api/gemini_counterfactual` | On-demand Gemini action plan |
+| GET | `/api/hospitals` | All hospitals |
+| GET | `/api/hospital/<id>` | Hospital detail + doctors |
+| GET | `/api/emergency_status` | Live emergency for hospital |
+| POST | `/api/accept_emergency` | Hospital accepts patient |
+| POST | `/api/update_equipment` | Update hospital equipment |
+| POST | `/api/toggle_doctor` | Toggle doctor duty status |
+| POST | `/api/add_doctor` | Add doctor to roster |
+| GET | `/audit` | Audit log view |
+
 
 ##  Key Features
 

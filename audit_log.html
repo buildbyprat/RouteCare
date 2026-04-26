@@ -115,6 +115,13 @@
           {% endfor %}
         </td>
         <td style="font-weight:600;color:var(--blue)">{{ log.recommended_hospital or '—' }}</td>
+        <td>
+          <span style="font-size:.68rem;padding:2px 8px;border-radius:8px;font-weight:600;
+            background:{% if log.decision_version and 'gemini' in (log.decision_version|lower) %}#DCFCE7;color:#15803D
+            {% else %}#FEF9C3;color:#854D0E{% endif %}">
+            ✨ AI
+          </span>
+        </td>
       </tr>
       <!-- Expanded detail row -->
       <tr class="expand-row" id="expand-{{ loop.index }}">
@@ -145,6 +152,7 @@
           </div>
           <div style="margin-top:12px;font-size:.72rem;color:var(--grey-400);font-family:monospace">
             Decision version: {{ log.decision_version }} &nbsp;·&nbsp; Record ID: {{ log.id }} &nbsp;·&nbsp; Append-only — cannot be modified
+            &nbsp;·&nbsp; <span style="color:#15803D;font-weight:600">✨ Gemini AI enhanced</span>
           </div>
         </td>
       </tr>

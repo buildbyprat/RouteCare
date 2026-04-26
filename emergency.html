@@ -254,6 +254,107 @@
       </div>
     </details>
 
+    <!-- ── GEMINI AI PANEL ── -->
+    <div id="geminiPanel" style="margin-bottom:18px">
+
+      <!-- Gemini status badge -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--grey-400)">
+          ✨ Google Gemini AI
+        </div>
+        <span id="geminiBadge" style="font-size:.68rem;padding:3px 10px;border-radius:10px;font-weight:600;background:#EFF6FF;color:#1D4ED8">
+          Loading…
+        </span>
+      </div>
+
+      <!-- Gemini Counterfactual — server-rendered on page load -->
+      {% if ai.gemini and ai.gemini.counterfactual %}
+      {% set cf = ai.gemini.counterfactual %}
+      <div id="geminiCounterfactual" style="background:linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 100%);border:1.5px solid #BFDBFE;border-radius:10px;padding:14px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:1.1rem">🧠</span>
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#1E40AF">Gemini Counterfactual — Paramedic Action Plan</div>
+          <span style="margin-left:auto;font-size:.65rem;padding:2px 8px;border-radius:8px;font-weight:600;background:{% if cf.source=='gemini' %}#DCFCE7;color:#15803D{% else %}#FEF9C3;color:#854D0E{% endif %}">
+            {{ 'Gemini Live' if cf.source=='gemini' else 'Rule-Based Fallback' }}
+          </span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:.7rem;font-weight:700;color:#1E40AF;margin-bottom:6px;text-transform:uppercase">⚡ Immediate Actions</div>
+            {% for act in cf.immediate_actions %}
+            <div style="font-size:.8rem;color:#1E3A5F;padding:4px 0;display:flex;gap:8px">
+              <span style="color:#3B82F6;font-weight:700;flex-shrink:0">{{ loop.index }}.</span>
+              <span>{{ act }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          <div>
+            <div style="font-size:.7rem;font-weight:700;color:#991B1B;margin-bottom:6px;text-transform:uppercase">🚫 Do NOT Do</div>
+            {% for ci in cf.what_not_to_do %}
+            <div style="font-size:.8rem;color:#7F1D1D;padding:4px 0;display:flex;gap:8px">
+              <span style="flex-shrink:0">✗</span><span>{{ ci }}</span>
+            </div>
+            {% endfor %}
+            {% if cf.medications %}
+            <div style="font-size:.7rem;font-weight:700;color:#065F46;margin-top:8px;margin-bottom:4px;text-transform:uppercase">💊 Medications</div>
+            {% for med in cf.medications %}
+            <div style="font-size:.78rem;color:#064E3B;padding:2px 0">{{ med }}</div>
+            {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+
+        {% if cf.monitoring %}
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid #BFDBFE">
+          <span style="font-size:.7rem;font-weight:700;color:#1E40AF;text-transform:uppercase">📊 Monitor: </span>
+          <span style="font-size:.79rem;color:#1E3A5F">{{ cf.monitoring | join(' · ') }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- SBAR Triage Summary -->
+      {% if ai.gemini and ai.gemini.sbar %}
+      {% set sbar = ai.gemini.sbar %}
+      <details style="margin-bottom:10px">
+        <summary style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--grey-400);cursor:pointer;display:flex;align-items:center;gap:8px;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:8px;padding:8px 12px">
+          <span>📋</span> SBAR Triage Handoff (Gemini)
+          <span style="margin-left:auto;font-size:.65rem;padding:2px 8px;border-radius:8px;font-weight:600;background:{% if sbar.source=='gemini' %}#DCFCE7;color:#15803D{% else %}#FEF9C3;color:#854D0E{% endif %}">
+            {{ 'Gemini Live' if sbar.source=='gemini' else 'Rule-Based' }}
+          </span>
+        </summary>
+        <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-top:none;border-radius:0 0 8px 8px;padding:12px">
+          {% for label, key, color in [('S — Situation','situation','#166534'),('B — Background','background','#1E40AF'),('A — Assessment','assessment','#92400E'),('R — Recommendation','recommendation','#7C3AED')] %}
+          <div style="margin-bottom:8px">
+            <div style="font-size:.7rem;font-weight:700;color:{{ color }};text-transform:uppercase;letter-spacing:.5px">{{ label }}</div>
+            <div style="font-size:.82rem;color:var(--grey-800);margin-top:2px;line-height:1.55">{{ sbar[key] if sbar[key] else '—' }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+
+      <!-- Family Explanation -->
+      {% if ai.gemini and ai.gemini.family_explanation %}
+      <details style="margin-bottom:10px">
+        <summary style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--grey-400);cursor:pointer;display:flex;align-items:center;gap:8px;background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:8px;padding:8px 12px">
+          <span>👨‍👩‍👧</span> Patient / Family Explanation (Gemini)
+        </summary>
+        <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-top:none;border-radius:0 0 8px 8px;padding:12px;font-size:.85rem;color:#431407;line-height:1.6">
+          {{ ai.gemini.family_explanation }}
+        </div>
+      </details>
+      {% endif %}
+
+      <!-- Refresh Gemini button -->
+      <button id="askGeminiBtn"
+        onclick="askGemini()"
+        style="font-size:.75rem;padding:7px 16px;border-radius:8px;border:1.5px solid #BFDBFE;background:#EFF6FF;color:#1D4ED8;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">
+        ✨ Refresh Gemini Analysis
+      </button>
+    </div>
+
     <div class="section-label" style="margin-top:20px">Hospital Recommendations <span style="font-size:.7rem;color:var(--blue);font-weight:500;text-transform:none;letter-spacing:0">(click any hospital for details)</span></div>
     <div id="hospitalsList">
       {% for i, h in enumerate(ai.hospitals_ranked[:3]) %}
@@ -529,6 +630,86 @@ function renderHospitalCards(hospList, ai){
     </div>`;
   }).join('');
   document.getElementById('hospitalsList').innerHTML=html;
+}
+
+// ── GEMINI STATUS ──────────────────────────────────────────────
+function checkGeminiStatus(){
+  fetch('/api/gemini_status').then(r=>r.json()).then(d=>{
+    const badge=document.getElementById('geminiBadge');
+    if(d.available){
+      badge.textContent='✨ Gemini Live';
+      badge.style.background='#DCFCE7'; badge.style.color='#15803D';
+    } else {
+      badge.textContent='⚙ Rule-Based Fallback';
+      badge.style.background='#FEF9C3'; badge.style.color='#854D0E';
+      badge.title = d.reason || '';
+    }
+  }).catch(()=>{
+    const badge=document.getElementById('geminiBadge');
+    badge.textContent='⚠ Status Unknown';
+  });
+}
+checkGeminiStatus();
+
+// ── ASK GEMINI (on-demand refresh) ─────────────────────────────
+function askGemini(){
+  const btn=document.getElementById('askGeminiBtn');
+  btn.textContent='✨ Thinking…'; btn.disabled=true;
+  const vitals={
+    hr:   parseInt(document.getElementById('vhr').textContent)||80,
+    bp_sys:parseInt((document.getElementById('vbp').textContent||'120/80').split('/')[0])||120,
+    bp_dia:parseInt((document.getElementById('vbp').textContent||'120/80').split('/')[1])||80,
+    spo2: parseInt(document.getElementById('vspo2').textContent)||98,
+    temp: parseFloat(document.getElementById('vtemp').textContent)||37.0,
+    emergency_type: '{{ patient.emergency|default("General") }}'
+  };
+  const condition=document.getElementById('condBadge').textContent||'Unknown';
+  fetch('/api/gemini_counterfactual',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({vitals, condition, guardrails:[], emergency_type:vitals.emergency_type})
+  }).then(r=>r.json()).then(cf=>{
+    renderGeminiCounterfactual(cf);
+    showToast('✨ Gemini analysis refreshed','success');
+  }).catch(()=>showToast('⚠ Gemini unavailable — using rule-based fallback','info'))
+  .finally(()=>{ btn.textContent='✨ Refresh Gemini Analysis'; btn.disabled=false; });
+}
+
+function renderGeminiCounterfactual(cf){
+  const panel = document.getElementById('geminiCounterfactual');
+  if(!panel) return;
+  const src = cf.source==='gemini'
+    ? '<span style="font-size:.65rem;padding:2px 8px;border-radius:8px;font-weight:600;background:#DCFCE7;color:#15803D">Gemini Live</span>'
+    : '<span style="font-size:.65rem;padding:2px 8px;border-radius:8px;font-weight:600;background:#FEF9C3;color:#854D0E">Rule-Based Fallback</span>';
+  const actions = (cf.immediate_actions||[]).map((a,i)=>
+    `<div style="font-size:.8rem;color:#1E3A5F;padding:4px 0;display:flex;gap:8px"><span style="color:#3B82F6;font-weight:700;flex-shrink:0">${i+1}.</span><span>${a}</span></div>`
+  ).join('');
+  const conts = (cf.what_not_to_do||[]).map(c=>
+    `<div style="font-size:.8rem;color:#7F1D1D;padding:4px 0;display:flex;gap:8px"><span style="flex-shrink:0">✗</span><span>${c}</span></div>`
+  ).join('');
+  const meds = (cf.medications||[]).filter(m=>m&&m!=='Per standing orders only').map(m=>
+    `<div style="font-size:.78rem;color:#064E3B;padding:2px 0">${m}</div>`
+  ).join('');
+  const mon = (cf.monitoring||[]).join(' · ');
+  panel.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:1.1rem">🧠</span>
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#1E40AF">Gemini Counterfactual — Paramedic Action Plan</div>
+      <span style="margin-left:auto">${src}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <div style="font-size:.7rem;font-weight:700;color:#1E40AF;margin-bottom:6px;text-transform:uppercase">⚡ Immediate Actions</div>
+        ${actions}
+      </div>
+      <div>
+        <div style="font-size:.7rem;font-weight:700;color:#991B1B;margin-bottom:6px;text-transform:uppercase">🚫 Do NOT Do</div>
+        ${conts}
+        ${meds ? `<div style="font-size:.7rem;font-weight:700;color:#065F46;margin-top:8px;margin-bottom:4px;text-transform:uppercase">💊 Medications</div>${meds}` : ''}
+      </div>
+    </div>
+    ${mon ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid #BFDBFE"><span style="font-size:.7rem;font-weight:700;color:#1E40AF;text-transform:uppercase">📊 Monitor: </span><span style="font-size:.79rem;color:#1E3A5F">${mon}</span></div>` : ''}
+  `;
 }
 
 setInterval(refreshVitals, 15000);
